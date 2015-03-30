@@ -3,8 +3,8 @@ The global namespace represents the full set of named repositories which can be
 referenced by Docker. Any scope within the namespace may refer to a subset of
 the named repos. A repository contains a set of content-addressable blobs
 and tags referencing those blobs. The namespace can be used to discover the
-location and certificate information of a repository based on DNS, HTTP requests and
-other means.
+location and certificate information of a repository based on DNS, HTTP requests
+and other means.
 
 A repository should always be referenced by its fully qualified name. If a
 client presents a shortened name to a user, that name should be fully
@@ -41,10 +41,12 @@ characters however there is no specific limitation on DNS or path components.
 ~~~
 
 ## Discovery
-The discovery process involves resolving a name into namespace scoped metadata. The
-namespace metadata contains the full set of information needed to fetch and
+The discovery process involves resolving a name into namespace scoped metadata.
+The namespace metadata contains the full set of information needed to fetch and
 verify content associated with the namespace repository. The metadata includes
-list of registry api endpoints, the trust model, and search index.
+list of registry api endpoints, the trust model, and search index. The discovery
+process should not be considered secure and therefore certificates retrieved as
+part of the discovery process should be verified before trusting.
 
 Discovery can be defined as...
 `<fully qualified name> -> scope([<registry api endpoint>, ...], <certificate>, <search index>, ...)`
@@ -80,7 +82,8 @@ For example, “example.com/foo/bar” would create a url
 <meta name=“docker-registry” content=“pull v2 https://registry.mirror.com/v2/”>
 <meta name=“docker-registry” content=“pull,notag v2 http://registry.mirror.com/v2/”>
 <meta name=“docker-index” content=“v1 https://search.mirror.com/v1/”>
-<meta name=“docker-certificate” content=“https://trust.example.com/registry.cert}”>
+<meta name=“docker-trust” content=“https://trust.example.com/v2/”>
+<meta name=“docker-certificate” content=“https://trust.example.com/registry.cert”>
 ~~~
 
 #### Fallback (Compatibility)
@@ -94,29 +97,31 @@ A custom method may be used to provide discovery by implementing the
 `NamespaceResolver` interface.
 
 ### Scope
-The namespace information produced from the discovery process may contain a scope
-field. The scope field means the information may apply to any namespace with a
-prefix of the given scope. The Scope prefix will always be applied with a path
-separator. If the scope field is ommitted, the information may not be applied to
-any other namespace.
+The namespace information produced from the discovery process may contain a
+scope field. The scope field means the information may apply to any namespace
+with a prefix of the given scope. The Scope prefix will always be applied with a
+path separator. If the scope field is ommitted, the information may not be
+applied to any other namespace. If the scope field is a prefix of the requested
+name, the scope should only be respected if it has a verified certificate in
+that scope.
 
 ### Endpoints
-The registry api endpoints each contain a version (may be v1 or v2 registries) and
-may either be pull only mirrors or full registries. The trust model applies to
-each registry api endpoint and may not be overloaded by an individual endpoint. The
-trust model defines the method for verifying the content retrieved from an
-endpoint, not the method for authentication or authorization.  Each registry api
-endpoint is responsible for specifying its authentication or authorization
-method. 
+The registry api endpoints each contain a version (may be v1 or v2 registries)
+and may either be pull only mirrors or full registries. The trust model applies
+to each registry api endpoint and may not be overloaded by an individual
+endpoint. The trust model defines the method for verifying the content retrieved
+from an endpoint, not the method for authentication or authorization.  Each
+registry api endpoint is responsible for specifying its authentication or
+authorization method. 
 
 It may also be possible in the future to extend these endpoints to support
 direct downloads of tarballs, such as the result from a `docker save`.
 
 ## Certificates
-Each namespace scope may have a certificate which can be used to sign keys for each
-individual repository. The certificate must be scoped to the namespace and be used
-to sign certificates using the fully qualified name for each repository. If
-namespace does not contain a certificate, the namespace will be considered
+Each namespace scope may have a certificate which can be used to sign keys for
+each individual repository. The certificate must be scoped to the namespace and
+be used to sign certificates using the fully qualified name for each repository.
+If namespace does not contain a certificate, the namespace will be considered
 untrusted for any repositories it contains. It is up to the client whether to
 require these certificates to be signed by a root CA.
 
