@@ -19,7 +19,7 @@ import (
 type manifestStoreTestEnv struct {
 	ctx        context.Context
 	driver     driver.StorageDriver
-	registry   distribution.Registry
+	registry   distribution.Namespace
 	repository distribution.Repository
 	name       string
 	tag        string
